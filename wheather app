@@ -1,0 +1,86 @@
+FILE NAME: index.html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Weather Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Weather Dashboard</h1>
+    <div class="search">
+      <input id="city" placeholder="Enter city (e.g., Mumbai)" />
+      <button id="getWeather">Get Weather</button>
+    </div>
+    <div id="result" class="result hidden">
+      <h2 id="name"></h2>
+      <p id="desc"></p>
+      <p><strong>Temperature:</strong> <span id="temp"></span>°C</p>
+      <p><strong>Humidity:</strong> <span id="humidity"></span>%</p>
+      <p><strong>Wind:</strong> <span id="wind"></span> m/s</p>
+    </div>
+    <div id="error" class="error hidden"></div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
+
+
+FILE NAME: styles.css
+
+body{font-family: Arial, Helvetica, sans-serif;background:#f2f6fb;color:#111}
+.container{max-width:600px;margin:40px auto;padding:20px;background:#fff;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.05)}
+h1{text-align:center}
+.search{display:flex;gap:8px;margin-bottom:16px}
+.search input{flex:1;padding:10px;border:1px solid #ddd;border-radius:4px}
+.search button{padding:10px 14px;border:0;background:#007bff;color:#fff;border-radius:4px;cursor:pointer}
+.result p{margin:6px 0}
+.hidden{display:none}
+.error{color:#b00020}
+
+FILE NAME: Script.js
+// IMPORTANT: Get your free API key from https://openweathermap.org/api and replace below
+const OPENWEATHER_API_KEY = "YOUR_OPENWEATHER_API_KEY";
+
+const cityInput = document.getElementById("city");
+const getBtn = document.getElementById("getWeather");
+const result = document.getElementById("result");
+const errEl = document.getElementById("error");
+
+getBtn.addEventListener("click", fetchWeather);
+cityInput.addEventListener("keydown", (e) => { if (e.key === "Enter") fetchWeather(); });
+
+async function fetchWeather() {
+  const city = cityInput.value.trim();
+  errEl.classList.add("hidden");
+  result.classList.add("hidden");
+  if (!city) { showError("Please enter a city name."); return; }
+  if (!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY === "YOUR_OPENWEATHER_API_KEY") {
+    showError("Please set OPENWEATHER_API_KEY in script.js (get one at openweathermap.org).");
+    return;
+  }
+  try {
+    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${OPENWEATHER_API_KEY}`);
+    if (!res.ok) throw new Error("City not found");
+    const data = await res.json();
+    showResult(data);
+  } catch (err) {
+    showError(err.message || "Failed to fetch weather");
+  }
+}
+
+function showResult(data) {
+  document.getElementById("name").textContent = `${data.name}, ${data.sys?.country || ""}`;
+  document.getElementById("desc").textContent = data.weather?.[0]?.description || "";
+  document.getElementById("temp").textContent = Math.round(data.main?.temp || 0);
+  document.getElementById("humidity").textContent = data.main?.humidity || 0;
+  document.getElementById("wind").textContent = data.wind?.speed || 0;
+  result.classList.remove("hidden");
+}
+
+function showError(msg) {
+  errEl.textContent = msg;
+  errEl.classList.remove("hidden");
+}
