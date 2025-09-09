@@ -1,0 +1,184 @@
+src/index.js
+
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import { PostsProvider } from "./postsContext";
+import "./index.css";
+
+createRoot(document.getElementById("root")).render(
+  <BrowserRouter>
+    <PostsProvider>
+      <App />
+    </PostsProvider>
+  </BrowserRouter>
+);
+
+
+src/postsContext.js
+
+import React, { createContext, useContext, useState } from "react";
+
+const PostsContext = createContext();
+
+export function PostsProvider({ children }) {
+  const [posts, setPosts] = useState([
+    { id: 1, title: "Welcome", body: "This is the first post." },
+    { id: 2, title: "React Tips", body: "Use components and hooks!" },
+  ]);
+
+  function addPost(post) { setPosts(p => [{ ...post, id: Date.now() }, ...p]); }
+  function updatePost(id, updated) { setPosts(p => p.map(x => x.id === id ? {...x, ...updated} : x)); }
+  function deletePost(id) { setPosts(p => p.filter(x => x.id !== id)); }
+
+  return (
+    <PostsContext.Provider value={{ posts, addPost, updatePost, deletePost }}>
+      {children}
+    </PostsContext.Provider>
+  );
+}
+
+export const usePosts = () => useContext(PostsContext);
+
+
+src/App.js
+
+import React from "react";
+import { Routes, Route, Link } from "react-router-dom";
+import Home from "./pages/Home";
+import NewPost from "./pages/NewPost";
+import PostView from "./pages/PostView";
+import EditPost from "./pages/EditPost";
+
+export default function App(){
+  return (
+    <div className="container">
+      <nav>
+        <Link to="/">Home</Link>
+        <Link to="/new">New Post</Link>
+      </nav>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/new" element={<NewPost />} />
+        <Route path="/post/:id" element={<PostView />} />
+        <Route path="/edit/:id" element={<EditPost />} />
+      </Routes>
+    </div>
+  );
+}
+
+
+src/pages/Home.js
+
+import React from "react";
+import { Link } from "react-router-dom";
+import { usePosts } from "../postsContext";
+
+export default function Home(){
+  const { posts, deletePost } = usePosts();
+  return (
+    <div>
+      <h1>Blog</h1>
+      {posts.length === 0 ? <p>No posts yet.</p> : posts.map(p => (
+        <div key={p.id} className="post">
+          <h3>{p.title}</h3>
+          <p>{p.body.slice(0,120)}{p.body.length>120?"...":""}</p>
+          <div className="post-actions">
+            <Link to={`/post/${p.id}`}>Read</Link>
+            <Link to={`/edit/${p.id}`}>Edit</Link>
+            <button onClick={() => deletePost(p.id)}>Delete</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+src/pages/NewPost.js
+
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { usePosts } from "../postsContext";
+
+export default function NewPost(){
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const { addPost } = usePosts();
+  const nav = useNavigate();
+
+  function submit(e){ e.preventDefault(); if(!title||!body) return; addPost({title, body}); nav("/"); }
+
+  return (
+    <div>
+      <h2>New Post</h2>
+      <form onSubmit={submit}>
+        <input placeholder="Title" value={title} onChange={e=>setTitle(e.target.value)} />
+        <textarea placeholder="Write post..." value={body} onChange={e=>setBody(e.target.value)} />
+        <button type="submit">Publish</button>
+      </form>
+    </div>
+  );
+}
+
+
+src/pages/PostView.js
+
+import React from "react";
+import { useParams, Link } from "react-router-dom";
+import { usePosts } from "../postsContext";
+
+export default function PostView(){
+  const { id } = useParams();
+  const { posts } = usePosts();
+  const post = posts.find(p => p.id === Number(id));
+  if(!post) return <div><p>Post not found.</p><Link to="/">Back</Link></div>;
+  return (
+    <div>
+      <h2>{post.title}</h2>
+      <p>{post.body}</p>
+      <Link to="/">Back</Link>
+    </div>
+  );
+}
+
+
+src/pages/EditPost.js
+
+import React, { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { usePosts } from "../postsContext";
+
+export default function EditPost(){
+  const { id } = useParams();
+  const { posts, updatePost } = usePosts();
+  const post = posts.find(p => p.id === Number(id));
+  const nav = useNavigate();
+  const [title, setTitle] = useState(post?.title || "");
+  const [body, setBody] = useState(post?.body || "");
+  if(!post) return <div><p>Post not found.</p></div>;
+
+  function submit(e){ e.preventDefault(); updatePost(post.id, { title, body }); nav("/"); }
+  return (
+    <div>
+      <h2>Edit Post</h2>
+      <form onSubmit={submit}>
+        <input value={title} onChange={e=>setTitle(e.target.value)} />
+        <textarea value={body} onChange={e=>setBody(e.target.value)} />
+        <button type="submit">Save</button>
+      </form>
+    </div>
+  );
+}
+
+
+src/index.css (simple)
+
+body{font-family: Arial,Helvetica,sans-serif;background:#f5f7fb;padding:16px;color:#111}
+.container{max-width:900px;margin:0 auto;background:#fff;padding:18px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+nav{display:flex;gap:10px;margin-bottom:12px}
+.post{border-bottom:1px solid #eee;padding:10px 0}
+.post-actions{display:flex;gap:8px}
+form input, form textarea{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ddd;border-radius:4px}
+form button{padding:8px 12px;background:#007bff;border:0;color:white;border-radius:4px}
